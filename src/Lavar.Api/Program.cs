@@ -86,6 +86,21 @@ if (app.Environment.IsDevelopment())
 app.UseCors();
 app.UseRateLimiter();
 
+// Cabeceras de seguridad: el panel sólo carga sus propios assets, así que se
+// puede cerrar el framing, el sniffing y los permisos que no usa.
+app.Use(async (contexto, siguiente) =>
+{
+    var cabeceras = contexto.Response.Headers;
+    cabeceras["Content-Security-Policy"] =
+        "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; " +
+        "script-src 'self'; connect-src 'self'; font-src 'self'; frame-ancestors 'none'; base-uri 'self'";
+    cabeceras["X-Content-Type-Options"] = "nosniff";
+    cabeceras["X-Frame-Options"] = "DENY";
+    cabeceras["Referrer-Policy"] = "no-referrer";
+    cabeceras["Permissions-Policy"] = "geolocation=(), camera=(), microphone=()";
+    await siguiente(contexto);
+});
+
 // El panel se sirve desde el mismo contenedor que la API: si hay wwwroot, se
 // sirve; si no, la API funciona igual (por ejemplo en desarrollo con Vite).
 app.UseDefaultFiles();
@@ -212,6 +227,23 @@ admin.MapPost("/pedidos", async (NuevoPedido entrada, LavarDbContext db, Cancell
     var items = entrada.Items ?? [];
     if (items.Count == 0)
         throw new ReglaDeNegocioException("Un pedido necesita al menos un servicio.");
+    if (items.Count > 50)
+        throw new ReglaDeNegocioException("Un pedido no puede tener más de 50 ítems.");
+    foreach (var item in items)
+    {
+        if (item.Cantidad <= 0 || item.Cantidad > 999)
+            throw new ReglaDeNegocioException("La cantidad de cada ítem tiene que estar entre 1 y 999.");
+    }
+    // SQLite no aplica los MaxLength del modelo: se validan acá para que no entre
+    // texto sin límite desde el panel.
+    if (entrada.ClienteNombre is { Length: > 120 })
+        throw new ReglaDeNegocioException("El nombre del cliente no puede superar los 120 caracteres.");
+    if (entrada.ClienteTelefono is { Length: > 40 })
+        throw new ReglaDeNegocioException("El teléfono no puede superar los 40 caracteres.");
+    if (entrada.Direccion is { Length: > 200 })
+        throw new ReglaDeNegocioException("La dirección no puede superar los 200 caracteres.");
+    if (entrada.Notas is { Length: > 1000 })
+        throw new ReglaDeNegocioException("Las notas no pueden superar los 1000 caracteres.");
 
     var cliente = entrada.ClienteId is { } id
         ? await db.Clientes.FirstOrDefaultAsync(c => c.Id == id, ct)
@@ -381,7 +413,19 @@ admin.MapPatch("/servicios/{id:guid}", async (Guid id, ServicioEntrada entrada, 
     return Results.Ok(new { servicio.Id, servicio.Nombre, activo = servicio.Activo });
 });
 
-app.MapFallbackToFile("index.html");
+app.MapFallback(async (HttpContext contexto) =>
+{
+    // Una ruta /api que no existe es un 404, no la SPA: si devolviera HTML,
+    // cualquier cliente que sondee la API recibiría 200 con una página.
+    if (contexto.Request.Path.StartsWithSegments("/api"))
+    {
+        contexto.Response.StatusCode = StatusCodes.Status404NotFound;
+        await contexto.Response.WriteAsJsonAsync(new { error = "No existe ese endpoint." });
+        return;
+    }
+    contexto.Response.ContentType = "text/html; charset=utf-8";
+    await contexto.Response.SendFileAsync(Path.Combine(app.Environment.WebRootPath ?? "wwwroot", "index.html"));
+});
 
 app.Run();
 
