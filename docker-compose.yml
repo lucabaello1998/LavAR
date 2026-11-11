@@ -1,0 +1,21 @@
+name: lavar
+
+services:
+  api:
+    build: .
+    container_name: lavar-api
+    ports:
+      - "8080:8080"
+    environment:
+      # Cambiar antes de publicar: es lo único que protege el panel.
+      LAVAR_ADMIN_TOKEN: "cambiar-este-token"
+      Lavanderia__Nombre: "Lavadero Rivadavia"
+      # Datos de ejemplo la primera vez; se puede apagar después.
+      Lavanderia__Demo: "1"
+    volumes:
+      # La base vive acá: el backup es copiar esta carpeta.
+      - datos:/datos
+    restart: unless-stopped
+
+volumes:
+  datos:

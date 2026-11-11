@@ -1,0 +1,79 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  api:
+    name: API (.NET 8)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Restore
+        run: dotnet restore
+
+      - name: Build (warnings como errores)
+        run: dotnet build --no-restore -c Release -warnaserror
+
+      - name: Tests
+        run: dotnet test --no-build -c Release --verbosity normal
+
+  panel:
+    name: Panel (React + Vite)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Instalar
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+  imagen:
+    name: Imagen Docker (API + panel)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build de la imagen
+        run: docker build -t lavar:ci .
+
+      - name: Smoke test: la app arranca y responde
+        run: |
+          docker run -d --name lavar-ci -p 8080:8080 \
+            -e LAVAR_ADMIN_TOKEN=token-ci lavar:ci
+          for i in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:8080/api/salud > /dev/null; then break; fi
+            sleep 2
+          done
+          curl -fsS http://127.0.0.1:8080/api/salud
+          # El panel tiene que servirse desde el mismo contenedor.
+          curl -fsS http://127.0.0.1:8080/ | grep -qi '<div id="raiz">'
+          # Sin token, el panel no deja entrar.
+          test "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8080/api/admin/pedidos)" = "401"
+          # Con token, responde.
+          curl -fsS -H "X-Admin-Token: token-ci" http://127.0.0.1:8080/api/admin/resumen
+          docker logs lavar-ci --tail 30
+          docker rm -f lavar-ci

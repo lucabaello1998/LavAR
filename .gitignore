@@ -1,0 +1,27 @@
+# .NET
+bin/
+obj/
+*.user
+*.suo
+
+# La base local y su journal de SQLite
+*.db
+*.db-shm
+*.db-wal
+
+# El panel compilado: lo arma Vite y lo copia el Dockerfile / el script de build
+src/Lavar.Api/wwwroot/
+web/dist/
+
+# Node
+node_modules/
+npm-debug.log*
+
+# Configuración local con secretos
+.env
+.env.local
+appsettings.Local.json
+
+# Sistema
+.DS_Store
+Thumbs.db
