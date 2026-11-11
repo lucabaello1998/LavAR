@@ -2,10 +2,12 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Threading.RateLimiting;
 using Lavar.Api;
 using Lavar.Api.Data;
 using Lavar.Core;
 using Lavar.Core.Modelos;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -27,6 +29,21 @@ var origenes = builder.Configuration.GetSection("Cors:Origenes").Get<string[]>()
     ?? ["http://localhost:5173", "http://127.0.0.1:5173"];
 builder.Services.AddCors(opciones => opciones.AddDefaultPolicy(politica =>
     politica.WithOrigins(origenes).AllowAnyHeader().AllowAnyMethod()));
+
+// El código es la única llave del pedido: sin límite, alguien podría probar
+// códigos al azar (o con un script) hasta pegarle al de otro cliente. El panel no
+// pasa por acá, así que un límite bajo no molesta a la lavandería.
+var limitePublico = builder.Configuration.GetValue("RateLimit:PublicoPorMinuto", 60);
+builder.Services.AddRateLimiter(opciones =>
+{
+    opciones.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    opciones.AddFixedWindowLimiter("publico", ventana =>
+    {
+        ventana.PermitLimit = Math.Max(1, limitePublico);
+        ventana.Window = TimeSpan.FromMinutes(1);
+        ventana.QueueLimit = 0;
+    });
+});
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
@@ -67,6 +84,7 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseCors();
+app.UseRateLimiter();
 
 // El panel se sirve desde el mismo contenedor que la API: si hay wwwroot, se
 // sirve; si no, la API funciona igual (por ejemplo en desarrollo con Vite).
@@ -127,7 +145,7 @@ publico.MapGet("/pedidos/{codigo}", async (string codigo, LavarDbContext db, ICo
             subtotal = i.Subtotal,
         }),
     });
-});
+}).RequireRateLimiting("publico");
 
 // --- panel: todo lo que administra la lavandería ----------------------------
 var admin = app.MapGroup("/api/admin").AddEndpointFilter<TokenDeAdmin>();

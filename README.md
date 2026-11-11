@@ -7,7 +7,7 @@ con un código de 6 letras y la lavandería avisa por WhatsApp sin tipear nada.
 ![.NET](https://img.shields.io/badge/.NET-8.0-512BD4)
 ![React](https://img.shields.io/badge/React-19-087ea4)
 ![SQLite](https://img.shields.io/badge/SQLite-local-003b57)
-![Tests](https://img.shields.io/badge/tests-66-2ea44f)
+![Tests](https://img.shields.io/badge/tests-68-2ea44f)
 ![Licencia](https://img.shields.io/badge/licencia-MIT-blue)
 
 ---
@@ -125,7 +125,7 @@ Todo lo que usa el panel es HTTP normal; sirve para una app móvil o una integra
 
 | Método | Ruta | Quién | Qué hace |
 |---|---|---|---|
-| `GET` | `/api/pedidos/{codigo}` | público | El estado del pedido. Acepta el código en minúsculas o con guiones |
+| `GET` | `/api/pedidos/{codigo}` | público | El estado del pedido. Acepta el código en minúsculas o con guiones. Limitado a 60 consultas por minuto por IP (`RateLimit:PublicoPorMinuto`) para que nadie pruebe códigos al azar |
 | `GET` | `/api/servicios` | público | La lista de precios vigente |
 | `GET` | `/api/salud` | público | Health check |
 | `GET` | `/api/admin/resumen` | panel | Pedidos y facturado del día, clientes, por estado |
@@ -171,7 +171,7 @@ dotnet test
 ```
 
 ```
-Correctas! - Con error: 0, Superado: 66, Omitido: 0, Total: 66
+Correctas! - Con error: 0, Superado: 68, Omitido: 0, Total: 68
 ```
 
 Cubren tres capas:
