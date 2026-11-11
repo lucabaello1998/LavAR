@@ -39,6 +39,9 @@ export function Cargando({ texto = 'Cargando…' }) {
 }
 
 export function MensajeDeError({ mensaje, onReintentar }) {
+  // Sin mensaje no se pinta nada: antes quedaba un cartel de error vacío con el
+  // botón "Reintentar", que parecía un fallo del panel.
+  if (!mensaje) return null;
   return (
     <div className="error">
       <span>{mensaje}</span>

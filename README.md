@@ -12,6 +12,10 @@ con un código de 6 letras y la lavandería avisa por WhatsApp sin tipear nada.
 
 ---
 
+| El panel del mostrador | Lo que ve el cliente con su código |
+|---|---|
+| ![Panel](docs/panel.png) | ![Seguimiento](docs/cliente.png) |
+
 ## El problema
 
 Una lavandería chica trabaja con un cuaderno, una birome y el WhatsApp del dueño. El cliente deja
