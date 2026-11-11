@@ -3,6 +3,7 @@
 **La lavandería deja de anotar en un cuaderno.** El mostrador carga el pedido, el cliente lo sigue
 con un código de 6 letras y la lavandería avisa por WhatsApp sin tipear nada.
 
+[![Release](https://img.shields.io/github/v/release/lucabaello1998/LavAR?label=release)](https://github.com/lucabaello1998/LavAR/releases/latest)
 [![CI](https://github.com/lucabaello1998/lavar/actions/workflows/ci.yml/badge.svg)](https://github.com/lucabaello1998/lavar/actions/workflows/ci.yml)
 ![.NET](https://img.shields.io/badge/.NET-8.0-512BD4)
 ![React](https://img.shields.io/badge/React-19-087ea4)
